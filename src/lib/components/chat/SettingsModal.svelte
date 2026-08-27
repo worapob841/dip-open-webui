@@ -43,6 +43,7 @@
 	import AdminConnections from '$lib/components/admin/Settings/Connections.svelte';
 	import AdminModels from '$lib/components/admin/Settings/Models.svelte';
 	import AdminSubagents from '$lib/components/admin/Settings/Subagents.svelte';
+	import AdminLiteLLMQuota from '$lib/components/admin/Settings/LiteLLMQuota.svelte';
 	import AdminEvaluations from '$lib/components/admin/Settings/Evaluations.svelte';
 	import AdminAnalytics from '$lib/components/admin/Analytics.svelte';
 	import AdminIntegrations from '$lib/components/admin/Settings/Integrations.svelte';
@@ -121,6 +122,7 @@
 		'admin:connections': 'AI',
 		'admin:models': 'AI',
 		'admin:subagents': 'AI',
+		'admin:litellm-quota': 'AI',
 		'admin:evaluations': 'Quality',
 		'admin:analytics': 'Quality',
 		'admin:integrations': 'Tools',
@@ -693,6 +695,11 @@
 			keywords: ['sub-agents', 'subagents', 'delegation', 'background', 'agents']
 		},
 		{
+			id: 'admin:litellm-quota',
+			title: 'LiteLLM Quota',
+			keywords: ['litellm', 'quota', 'budget', 'spend', 'usage', 'limit', 'cost']
+		},
+		{
 			id: 'admin:interface',
 			title: 'Interface',
 			keywords: ['interface', 'ui', 'appearance', 'banners', 'tasks', 'prompt suggestions', 'tags']
@@ -1233,6 +1240,8 @@
 				<AdminModels bind:tabState />
 			{:else if selectedTab === 'admin:subagents'}
 				<AdminSubagents />
+			{:else if selectedTab === 'admin:litellm-quota'}
+				<AdminLiteLLMQuota />
 			{:else if selectedTab === 'admin:evaluations'}
 				<AdminEvaluations />
 			{:else if selectedTab === 'admin:analytics'}

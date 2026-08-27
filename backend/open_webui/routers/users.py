@@ -45,6 +45,7 @@ from open_webui.utils.auth import (
     validate_password,
 )
 from open_webui.utils.chat_variables import ChatVariablesError, normalize_user_variables, validate_user_variables
+from open_webui.utils.litellm_quota import LiteLLMQuotaInfo, get_litellm_end_user_quota
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -729,6 +730,16 @@ async def get_user_usage_by_session_user(
 
 
 ############################
+# GetUserQuotaBySessionUser
+############################
+
+
+@router.get('/quota', response_model=LiteLLMQuotaInfo)
+async def get_user_quota_by_session_user(user=Depends(get_verified_user)):
+    return await get_litellm_end_user_quota(user.id)
+
+
+############################
 # GetUserById
 ############################
 
@@ -1121,3 +1132,23 @@ async def get_user_preview(
             'total': len(all_tools),
         },
     }
+
+
+############################
+# GetUserQuotaById
+############################
+
+
+@router.get('/{user_id}/quota', response_model=LiteLLMQuotaInfo)
+async def get_user_quota_by_id(
+    user_id: str,
+    user=Depends(get_admin_user),
+    db: AsyncSession = Depends(get_async_session),
+):
+    target_user = await Users.get_user_by_id(user_id, db=db)
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ERROR_MESSAGES.USER_NOT_FOUND,
+        )
+    return await get_litellm_end_user_quota(user_id)

@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { getUserPreview } from '$lib/apis/users';
+	import dayjs from 'dayjs';
+	import localizedFormat from 'dayjs/plugin/localizedFormat';
+	dayjs.extend(localizedFormat);
+
+	import { getUserPreview, getUserQuotaByUserId, type UserQuotaInfo } from '$lib/apis/users';
+	import { config } from '$lib/stores';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
@@ -15,8 +20,12 @@
 	let preview: any = null;
 	let error: string = '';
 
+	let quota: UserQuotaInfo | null = null;
+	let quotaLoading = true;
+
 	$: if (show && userId) {
 		loadPreview();
+		loadQuota();
 	}
 
 	const loadPreview = async () => {
@@ -28,6 +37,21 @@
 			error = String(e);
 		} finally {
 			loading = false;
+		}
+	};
+
+	const loadQuota = async () => {
+		if (!$config?.features?.enable_litellm_quota) {
+			quotaLoading = false;
+			return;
+		}
+		quotaLoading = true;
+		try {
+			quota = await getUserQuotaByUserId(localStorage.token, userId);
+		} catch (e) {
+			quota = null;
+		} finally {
+			quotaLoading = false;
 		}
 	};
 </script>
@@ -60,7 +84,50 @@
 				<div class="text-red-500 text-xs text-center py-4">{error}</div>
 			{:else if preview}
 				<div class="space-y-2">
-					{#if preview.groups.length > 0}
+					{#if $config?.features?.enable_litellm_quota}
+							<div>
+								<div class=" mb-2 text-sm font-normal">{$i18n.t('Quota')}</div>
+								{#if quotaLoading}
+									<div class="flex w-full justify-between my-1">
+										<Spinner className="size-3" />
+									</div>
+								{:else if !quota || !quota.available}
+									<div class="flex w-full justify-between my-1">
+										<div class=" self-center text-xs text-gray-500">
+											{$i18n.t('Quota information unavailable')}
+										</div>
+									</div>
+								{:else if !quota.has_usage}
+									<div class="flex w-full justify-between my-1">
+										<div class=" self-center text-xs text-gray-500">
+											{$i18n.t('No usage yet')}
+										</div>
+									</div>
+								{:else}
+									<div class="flex w-full justify-between my-1">
+										<div class=" self-center text-xs font-normal">
+											{#if quota.max_budget !== null}
+												${quota.spend.toFixed(2)} / ${quota.max_budget.toFixed(2)}
+											{:else}
+												${quota.spend.toFixed(2)} - {$i18n.t('Unlimited')}
+											{/if}
+										</div>
+									</div>
+									{#if quota.budget_reset_at}
+										<div class="flex w-full justify-between my-1">
+											<div class=" self-center text-xs text-gray-500">
+												{$i18n.t('Resets on')}
+												{dayjs(quota.budget_reset_at).format('LL')}
+											</div>
+										</div>
+									{/if}
+								{/if}
+							</div>
+
+							<hr class="border-gray-50 dark:border-gray-850/30 my-1" />
+						{/if}
+
+						{#if preview.groups.length > 0}
 						<div>
 							<div class=" mb-2 text-sm font-normal">{$i18n.t('Groups')}</div>
 							<div class="flex flex-col w-full">

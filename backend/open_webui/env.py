@@ -974,6 +974,15 @@ else:
     except Exception:
         MODELS_CACHE_TTL = 1
 
+LITELLM_QUOTA_CACHE_TTL = os.getenv('LITELLM_QUOTA_CACHE_TTL', '30')
+if LITELLM_QUOTA_CACHE_TTL == '':
+    LITELLM_QUOTA_CACHE_TTL = None
+else:
+    try:
+        LITELLM_QUOTA_CACHE_TTL = int(LITELLM_QUOTA_CACHE_TTL)
+    except Exception:
+        LITELLM_QUOTA_CACHE_TTL = 30
+
 
 ####################################
 # CHAT

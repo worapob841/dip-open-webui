@@ -53,6 +53,22 @@
 	</svg>
 {:else if id === 'subagents'}
 	<UserCircle {className} {strokeWidth} />
+{:else if id === 'litellm-quota'}
+	<svg
+		aria-hidden="true"
+		xmlns="http://www.w3.org/2000/svg"
+		fill="none"
+		viewBox="0 0 24 24"
+		stroke="currentColor"
+		stroke-width={strokeWidth}
+		class={className}
+	>
+		<path
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			d="M12 6v12m3.75-10.5a3.375 3.375 0 0 0-3.375-1.5h-1.5a2.625 2.625 0 0 0 0 5.25h1.5a2.625 2.625 0 0 1 0 5.25h-1.5a3.375 3.375 0 0 1-3.375-1.5"
+		/>
+	</svg>
 {:else if id === 'evaluations'}
 	<svg
 		aria-hidden="true"

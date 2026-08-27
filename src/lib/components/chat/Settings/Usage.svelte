@@ -2,12 +2,18 @@
 	import { getContext, onMount } from 'svelte';
 	import type { Writable } from 'svelte/store';
 
+	import dayjs from 'dayjs';
+	import localizedFormat from 'dayjs/plugin/localizedFormat';
+	dayjs.extend(localizedFormat);
+
 	import {
 		getUserUsage,
+		getUserQuota,
 		type UserUsageHeatmapEntry,
-		type UserUsageResponse
+		type UserUsageResponse,
+		type UserQuotaInfo
 	} from '$lib/apis/users';
-	import { models } from '$lib/stores';
+	import { config, models } from '$lib/stores';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { formatNumber } from '$lib/utils';
@@ -16,6 +22,9 @@
 	import UserSettingRow from './UserSettingRow.svelte';
 
 	const i18n: Writable<any> = getContext('i18n');
+
+	let quota: UserQuotaInfo | null = null;
+	let quotaLoading = true;
 
 	type HeatmapMode = 'daily' | 'weekly' | 'cumulative';
 	type HeatmapCell = UserUsageHeatmapEntry | null;
@@ -137,6 +146,21 @@
 			usage = null;
 		}
 		loading = false;
+	};
+
+	const loadQuota = async () => {
+		if (!$config?.features?.enable_litellm_quota) {
+			quotaLoading = false;
+			return;
+		}
+		quotaLoading = true;
+		try {
+			quota = await getUserQuota(localStorage.token);
+		} catch (error) {
+			console.error('Quota load failed:', error);
+			quota = null;
+		}
+		quotaLoading = false;
 	};
 
 	const weekStart = (dateString: string) => {
@@ -267,12 +291,69 @@
 	const modelName = (id: string | null) => (id ? (modelNames.get(id) ?? id) : '-');
 
 	onMount(loadUsage);
+	onMount(loadQuota);
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
 	<div class="mb-4">
 		<h2 class="text-sm font-medium text-gray-900 dark:text-white">{$i18n.t('Usage')}</h2>
 	</div>
+
+	{#if $config?.features?.enable_litellm_quota}
+		<div class="mb-4">
+			{#if quotaLoading}
+				<div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-600">
+					<Spinner className="size-3" />
+					{$i18n.t('Loading quota...')}
+				</div>
+			{:else if !quota || !quota.available}
+				<div class="text-xs text-gray-400 dark:text-gray-600">
+					{$i18n.t('Quota information unavailable')}
+				</div>
+			{:else if !quota.has_usage}
+				<div class="text-xs text-gray-400 dark:text-gray-600">
+					{$i18n.t('No usage yet')}
+				</div>
+			{:else}
+				<div
+					class="rounded-xl border border-gray-100/50 bg-gray-50/40 px-3 py-2.5 dark:border-white/[0.04] dark:bg-white/[0.03]"
+				>
+					<div class="flex items-center justify-between">
+						<span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+							{$i18n.t('Quota')}
+						</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">
+							{#if quota.max_budget !== null}
+								${quota.spend.toFixed(2)} / ${quota.max_budget.toFixed(2)}
+							{:else}
+								${quota.spend.toFixed(2)} · {$i18n.t('Unlimited')}
+							{/if}
+						</span>
+					</div>
+					{#if quota.max_budget !== null && quota.max_budget > 0}
+						<div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+							<div
+								class="h-full rounded-full {quota.spend / quota.max_budget >= 0.9
+									? 'bg-red-500'
+									: quota.spend / quota.max_budget >= 0.7
+										? 'bg-amber-500'
+										: 'bg-green-500'}"
+								style="width: {Math.min(100, (quota.spend / quota.max_budget) * 100)}%"
+							></div>
+						</div>
+					{/if}
+					<div class="mt-1.5 text-[0.6875rem] text-gray-400 dark:text-gray-600">
+						{#if quota.budget_reset_at}
+							{$i18n.t('Resets on')}
+							{dayjs(quota.budget_reset_at).format('LL')}
+						{:else if quota.budget_duration}
+							{$i18n.t('Resets after first use')}
+						{/if}
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#if loading}
 		<div class="flex flex-1 items-center justify-center">

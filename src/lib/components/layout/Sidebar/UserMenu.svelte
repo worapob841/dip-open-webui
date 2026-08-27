@@ -31,8 +31,11 @@
 	import UserIcon from './icons/User.svelte';
 	import WorkspaceIcon from './icons/Workspace.svelte';
 	import XMarkIcon from './icons/XMark.svelte';
-	import { updateUserStatus, updateUserSettings } from '$lib/apis/users';
+	import { updateUserStatus, updateUserSettings, getUserQuota, type UserQuotaInfo } from '$lib/apis/users';
 	import { toast } from 'svelte-sonner';
+	import dayjs from 'dayjs';
+	import localizedFormat from 'dayjs/plugin/localizedFormat';
+	dayjs.extend(localizedFormat);
 
 	const i18n = getContext('i18n');
 
@@ -84,12 +87,25 @@
 		}
 	};
 
+	let quota: UserQuotaInfo | null = null;
+	const getQuotaInfo = async () => {
+		const res = await getUserQuota(localStorage.token).catch((error) => {
+			console.error('Error fetching quota info:', error);
+		});
+
+		quota = res || null;
+	};
+
 	const handleDropdownChange = (state) => {
 		dispatch('change', state);
 
 		// Fetch usage info when dropdown opens, if user has permission
 		if (state && ($config?.features?.enable_public_active_users_count || role === 'admin')) {
 			getUsageInfo();
+		}
+
+		if (state && $config?.features?.enable_litellm_quota) {
+			getQuotaInfo();
 		}
 	};
 </script>
@@ -158,7 +174,42 @@
 								</div>
 							</Tooltip>
 						{/if}
+
+						{#if $config?.features?.enable_litellm_quota && quota?.available && quota?.has_usage}
+							<Tooltip
+								content={quota.budget_reset_at
+									? `${$i18n.t('Resets on')} ${dayjs(quota.budget_reset_at).format('LL')}`
+									: $i18n.t('Quota')}
+							>
+								<div
+									class="ml-auto flex shrink-0 items-center justify-end gap-1 rounded-full px-1.5 py-0.5 text-[11px] leading-none text-gray-500 dark:text-gray-400"
+								>
+									<span>
+										{#if quota.max_budget !== null}
+											${quota.spend.toFixed(2)} / ${quota.max_budget.toFixed(2)}
+										{:else}
+											${quota.spend.toFixed(2)}
+										{/if}
+									</span>
+								</div>
+							</Tooltip>
+						{/if}
 					</button>
+
+					{#if $config?.features?.enable_litellm_quota && quota?.available && quota?.has_usage && quota.max_budget !== null && quota.max_budget > 0}
+						<div class="px-2 pb-1">
+							<div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+								<div
+									class="h-full rounded-full {quota.spend / quota.max_budget >= 0.9
+										? 'bg-red-500'
+										: quota.spend / quota.max_budget >= 0.7
+											? 'bg-amber-500'
+											: 'bg-green-500'}"
+									style="width: {Math.min(100, (quota.spend / quota.max_budget) * 100)}%"
+								></div>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 
