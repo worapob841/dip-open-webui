@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import urllib.parse
 from typing import Optional
 
 import aiohttp
@@ -11,6 +12,38 @@ from open_webui.utils.tools import bearer_auth_header
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
+
+# Unlike webhook/web-fetch URLs elsewhere in this app, a legitimate
+# LITELLM_ADMIN_BASE_URL almost always points at a private/internal LiteLLM
+# deployment (a k8s service, an internal IP) - that's the normal, expected
+# topology, so this deliberately does NOT reuse retrieval.web.utils.validate_url
+# (which blocks all private IPs by default) or get_ssrf_safe_session (whose
+# resolver enforces the same block at connect time) - both would reject every
+# real-world deployment of this feature. This blocks only the target classes
+# that are never legitimate for a LiteLLM proxy regardless of network topology:
+# non-http(s) schemes, parser-confusing characters, and cloud metadata
+# endpoints (credential-theft targets on AWS/GCP/Azure).
+_BLOCKED_LITELLM_HOSTS = frozenset(
+    {
+        '169.254.169.254',
+        '::ffff:169.254.169.254',
+        'fd00:ec2::254',
+        'metadata.google.internal',
+        'metadata',
+    }
+)
+
+
+def validate_litellm_base_url(base_url: str) -> None:
+    if not base_url:
+        return
+    if any(ch in base_url for ch in ('\\', '\t', '\n', '\r')):
+        raise ValueError('LiteLLM base URL contains invalid characters')
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError('LiteLLM base URL must use http or https')
+    if (parsed.hostname or '').lower() in _BLOCKED_LITELLM_HOSTS:
+        raise ValueError('LiteLLM base URL points at a disallowed host')
 
 
 class LiteLLMQuotaInfo(BaseModel):
@@ -29,6 +62,7 @@ class LiteLLMQuotaInfo(BaseModel):
 async def _get_default_budget(base_url: str, api_key: str, budget_id: str) -> Optional[dict]:
     headers = bearer_auth_header(api_key)
     try:
+        validate_litellm_base_url(base_url)
         async with aiohttp.ClientSession(
             trust_env=True,
             timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
@@ -73,6 +107,7 @@ async def get_litellm_end_user_quota(end_user_id: str) -> LiteLLMQuotaInfo:
 
     headers = bearer_auth_header(api_key)
     try:
+        validate_litellm_base_url(base_url)
         async with aiohttp.ClientSession(
             trust_env=True,
             timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
@@ -120,3 +155,4 @@ async def get_litellm_end_user_quota(end_user_id: str) -> LiteLLMQuotaInfo:
 
 async def clear_litellm_quota_cache():
     await get_litellm_end_user_quota.cache.clear()
+    await _get_default_budget.cache.clear()

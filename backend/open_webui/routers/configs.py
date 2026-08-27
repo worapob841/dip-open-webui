@@ -14,7 +14,7 @@ from open_webui.models.config import Config
 from open_webui.models.oauth_sessions import OAuthSessions
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import get_custom_headers
-from open_webui.utils.litellm_quota import clear_litellm_quota_cache
+from open_webui.utils.litellm_quota import clear_litellm_quota_cache, validate_litellm_base_url
 from open_webui.utils.mcp.client import MCPClient
 from open_webui.utils.oauth import (
     OAuthClientInformationFull,
@@ -34,7 +34,7 @@ from open_webui.utils.tools import (
     set_terminal_servers,
     set_tool_servers,
 )
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 router = APIRouter()
 
@@ -816,6 +816,29 @@ class LiteLLMQuotaConfigForm(BaseModel):
     LITELLM_ADMIN_API_KEY: str
     LITELLM_DEFAULT_BUDGET_ID: str = ''
 
+    @field_validator('LITELLM_ADMIN_API_KEY')
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        if len(v) > 512:
+            raise ValueError('LiteLLM admin API key is too long')
+        if any(ch in v for ch in ('\r', '\n')):
+            raise ValueError('LiteLLM admin API key contains invalid characters')
+        return v
+
+    @field_validator('LITELLM_DEFAULT_BUDGET_ID')
+    @classmethod
+    def validate_budget_id(cls, v: str) -> str:
+        if len(v) > 128:
+            raise ValueError('Default budget ID is too long')
+        return v
+
+
+def _check_litellm_base_url(base_url: str) -> None:
+    try:
+        validate_litellm_base_url(base_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail='Invalid or disallowed LiteLLM base URL') from e
+
 
 @router.get('/litellm_quota', response_model=LiteLLMQuotaConfigForm)
 async def get_litellm_quota_config(user=Depends(get_admin_user)):
@@ -828,6 +851,9 @@ async def set_litellm_quota_config(
     form_data: LiteLLMQuotaConfigForm,
     user=Depends(get_admin_user),
 ):
+    base_url = (form_data.LITELLM_ADMIN_BASE_URL or '').rstrip('/')
+    _check_litellm_base_url(base_url)
+
     await Config.upsert(config_updates(form_data.model_dump(), LITELLM_QUOTA_CONFIG_KEYS))
     values = await get_config_values(LITELLM_QUOTA_CONFIG_KEYS)
     await clear_litellm_quota_cache()
@@ -848,6 +874,7 @@ async def verify_litellm_quota_connection(form_data: LiteLLMQuotaConfigForm, use
     base_url = (form_data.LITELLM_ADMIN_BASE_URL or '').rstrip('/')
     if not base_url or not form_data.LITELLM_ADMIN_API_KEY:
         raise HTTPException(status_code=400, detail='LiteLLM base URL and API key are required')
+    _check_litellm_base_url(base_url)
 
     headers = bearer_auth_header(form_data.LITELLM_ADMIN_API_KEY)
     try:
@@ -865,7 +892,7 @@ async def verify_litellm_quota_connection(form_data: LiteLLMQuotaConfigForm, use
                 # only a 401/403 means the key lacks proxy_admin[_viewer] access.
                 if resp.ok or resp.status == 404:
                     return {'status': True}
-                detail = await resp.text()
+                detail = (await resp.text())[:500]
                 raise HTTPException(status_code=resp.status, detail=detail)
     except HTTPException:
         raise

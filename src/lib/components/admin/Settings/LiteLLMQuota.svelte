@@ -120,7 +120,7 @@
 						</div>
 						<p class="mt-0.5 text-[0.6875rem] text-gray-400 dark:text-gray-600">
 							{$i18n.t(
-								'Used server-side only, never sent to the browser. Create it with POST /key/generate and {"user_role": "proxy_admin_viewer"} against your LiteLLM master key.'
+								'Only visible to admins; used server-side for the quota lookup and never exposed to regular users. Create it with POST /key/generate and {"user_role": "proxy_admin_viewer"} against your LiteLLM master key.'
 							)}
 						</p>
 					</div>
