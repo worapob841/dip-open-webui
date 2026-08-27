@@ -744,3 +744,69 @@ export const getUserUsage = async (
 
 	return res;
 };
+
+export type UserQuotaInfo = {
+	available: boolean;
+	has_usage: boolean;
+	spend: number;
+	max_budget: number | null;
+	budget_duration: string | null;
+	budget_reset_at: string | null;
+};
+
+export const getUserQuota = async (token: string): Promise<UserQuotaInfo | null> => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/users/quota`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const getUserQuotaByUserId = async (
+	token: string,
+	userId: string
+): Promise<UserQuotaInfo | null> => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/users/${userId}/quota`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};

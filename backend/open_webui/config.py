@@ -2020,6 +2020,11 @@ SUBAGENTS_MAX_ITERATIONS = int(os.getenv('SUBAGENTS_MAX_ITERATIONS', '30'))
 SUBAGENTS_MAX_OUTPUT = int(os.getenv('SUBAGENTS_MAX_OUTPUT', '30000'))
 SUBAGENTS_SYSTEM_PROMPT = os.getenv('SUBAGENTS_SYSTEM_PROMPT', '')
 
+ENABLE_LITELLM_QUOTA = os.getenv('ENABLE_LITELLM_QUOTA', 'False').lower() == 'true'
+LITELLM_ADMIN_BASE_URL = os.getenv('LITELLM_ADMIN_BASE_URL', '')
+LITELLM_ADMIN_API_KEY = os.getenv('LITELLM_ADMIN_API_KEY', '')
+LITELLM_DEFAULT_BUDGET_ID = os.getenv('LITELLM_DEFAULT_BUDGET_ID', '')
+
 AUTOMATION_MAX_COUNT = os.getenv('AUTOMATION_MAX_COUNT', '')
 
 AUTOMATION_MIN_INTERVAL = os.getenv('AUTOMATION_MIN_INTERVAL', '')
@@ -3069,6 +3074,10 @@ DEFAULT_CONFIG = {
     'subagents.max_iterations': SUBAGENTS_MAX_ITERATIONS,
     'subagents.max_output': SUBAGENTS_MAX_OUTPUT,
     'subagents.system_prompt': SUBAGENTS_SYSTEM_PROMPT,
+    'litellm_quota.enable': ENABLE_LITELLM_QUOTA,
+    'litellm_quota.base_url': LITELLM_ADMIN_BASE_URL,
+    'litellm_quota.api_key': LITELLM_ADMIN_API_KEY,
+    'litellm_quota.default_budget_id': LITELLM_DEFAULT_BUDGET_ID,
     'automations.max_count': AUTOMATION_MAX_COUNT,
     'automations.min_interval': AUTOMATION_MIN_INTERVAL,
     'automations.auth_token_expires_in': AUTOMATION_AUTH_TOKEN_EXPIRES_IN,

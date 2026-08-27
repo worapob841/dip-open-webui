@@ -24,6 +24,7 @@
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Integrations from './Settings/Integrations.svelte';
 	import Subagents from './Settings/Subagents.svelte';
+	import LiteLLMQuota from './Settings/LiteLLMQuota.svelte';
 
 	import Search from '../icons/Search.svelte';
 	import AdminTabIcon from './Settings/AdminTabIcon.svelte';
@@ -42,6 +43,7 @@
 			'connections',
 			'models',
 			'subagents',
+			'litellm-quota',
 			'evaluations',
 			'analytics',
 			'integrations',
@@ -152,6 +154,12 @@
 			title: 'Sub-agents',
 			route: '/admin/settings/subagents',
 			keywords: ['sub-agents', 'subagents', 'delegation', 'background', 'agents']
+		},
+		{
+			id: 'litellm-quota',
+			title: 'LiteLLM Quota',
+			route: '/admin/settings/litellm-quota',
+			keywords: ['litellm', 'quota', 'budget', 'spend', 'usage', 'limit', 'cost']
 		},
 		{
 			id: 'evaluations',
@@ -427,6 +435,8 @@
 					<Models />
 				{:else if selectedTab === 'subagents'}
 					<Subagents />
+				{:else if selectedTab === 'litellm-quota'}
+					<LiteLLMQuota />
 				{:else if selectedTab === 'evaluations'}
 					<Evaluations />
 				{:else if selectedTab === 'analytics'}
