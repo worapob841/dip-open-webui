@@ -323,10 +323,10 @@
 							{$i18n.t('Quota')}
 						</span>
 						<span class="text-xs text-gray-500 dark:text-gray-400">
-							{#if quota.max_budget !== null}
-								${quota.spend.toFixed(2)} / ${quota.max_budget.toFixed(2)}
+							{#if quota.max_budget !== null && quota.max_budget > 0}
+								{Math.round((quota.spend / quota.max_budget) * 100)}% {$i18n.t('used')}
 							{:else}
-								${quota.spend.toFixed(2)} · {$i18n.t('Unlimited')}
+								{$i18n.t('Unlimited')}
 							{/if}
 						</span>
 					</div>

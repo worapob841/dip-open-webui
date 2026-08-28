@@ -185,10 +185,10 @@
 									class="ml-auto flex shrink-0 items-center justify-end gap-1 rounded-full px-1.5 py-0.5 text-[11px] leading-none text-gray-500 dark:text-gray-400"
 								>
 									<span>
-										{#if quota.max_budget !== null}
-											${quota.spend.toFixed(2)} / ${quota.max_budget.toFixed(2)}
+										{#if quota.max_budget !== null && quota.max_budget > 0}
+											{Math.round((quota.spend / quota.max_budget) * 100)}% {$i18n.t('used')}
 										{:else}
-											${quota.spend.toFixed(2)}
+											{$i18n.t('Unlimited')}
 										{/if}
 									</span>
 								</div>
