@@ -1217,8 +1217,23 @@
 								.catch(() => {});
 						}
 					} else {
-						localStorage.removeItem('token');
+						// A falsy sessionUser does NOT necessarily mean "signed out".
+						// getSessionUser() also resolves to null on network errors,
+						// timeouts and non-JSON 5xx bodies — cases where the server never
+						// actually rendered a verdict on this token. Deleting the token
+						// there turns a transient backend outage into a forced re-login.
+						// Only discard it when the backend genuinely answers 401.
 						await user.set(null);
+
+						if (await isCurrentSessionUnauthorized(originalFetch)) {
+							localStorage.removeItem('token');
+						} else {
+							toast.error(
+								$i18n.t(
+									'Could not reach the server. Your session has been kept — please try again.'
+								)
+							);
+						}
 					}
 				}
 			}

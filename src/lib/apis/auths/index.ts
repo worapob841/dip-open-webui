@@ -82,6 +82,12 @@ export const updateAdminConfig = async (token: string, body: object) => {
 	return res;
 };
 
+// The root layout blocks rendering until this resolves, so without a timeout an
+// unresponsive backend leaves the user staring at the splash screen until the
+// browser's own (multi-minute) timeout fires. Callers must treat a failure here
+// as "backend unreachable", NOT as "signed out" — see src/routes/+layout.svelte.
+const SESSION_USER_FETCH_TIMEOUT = 30000;
+
 export const getSessionUser = async (token: string) => {
 	let error = null;
 
@@ -91,7 +97,8 @@ export const getSessionUser = async (token: string) => {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`
 		},
-		credentials: 'include'
+		credentials: 'include',
+		signal: AbortSignal.timeout(SESSION_USER_FETCH_TIMEOUT)
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
